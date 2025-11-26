@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset='utf-8'>
+	<meta http-equiv='X-UA-Compatible' content='IE=edge'>
+	<title>2XKO Team Randomizer</title>
+	<meta name='viewport' content='width=device-width, initial-scale=1'>
+	<link rel="icon" href="https://wiki.play2xko.com/en-us/images/Favicon.ico">
+
+	<!--
+The MIT License (MIT)
+
+Copyright (c) 2011-2025 The Bootstrap Authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+	-->
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+		integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+		crossorigin="anonymous"></script>
+
+	<style>
+		@media (min-width: 768px) {
+			.character-image {
+				height: 40vh;
+			}
+		}
+
+		.fuse-image {
+			filter: invert(100%);
+		}
+	</style>
+
+	<script>
+		/*
+MIT License
+
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+		*/
+		function arrayShuffle(array) {
+			if (!Array.isArray(array)) {
+				throw new TypeError(`Expected an array, got ${typeof array}`);
+			}
+
+			for (let index = array.length - 1; index > 0; index--) {
+				const newIndex = Math.floor(Math.random() * (index + 1));
+				[array[index], array[newIndex]] = [array[newIndex], array[index]];
+			}
+
+			return array;
+		}
+
+		function arrayToShuffled(array) {
+			if (!Array.isArray(array)) {
+				throw new TypeError(`Expected an array, got ${typeof array}`);
+			}
+
+			if (array.length === 0) {
+				return [];
+			}
+
+			return arrayShuffle([...array]);
+		}
+
+		const LIGHT_THEME = "light";
+		const DARK_THEME = "dark";
+		const AUTO_THEME = "auto";
+
+		const BOOTSTRAP_THEME_ATTRIBUTE_KEY = "data-bs-theme";
+
+		function prefersDarkMode() {
+			return window.matchMedia("(prefers-color-scheme: dark)");
+		}
+
+		function resolveTheme(theme) {
+			if (theme == AUTO_THEME) {
+				if (prefersDarkMode()) {
+					return DARK_THEME;
+				} else {
+					return LIGHT_THEME;
+				}
+			}
+
+			return theme;
+		}
+
+		function getStoredTheme() {
+			return localStorage.getItem(BOOTSTRAP_THEME_ATTRIBUTE_KEY) ?? "auto";
+		}
+
+		function getActiveTheme() {
+			return resolveTheme(getStoredTheme());
+		}
+
+		function setTheme(theme) {
+			localStorage.setItem(BOOTSTRAP_THEME_ATTRIBUTE_KEY, theme);
+			document.documentElement.setAttribute(BOOTSTRAP_THEME_ATTRIBUTE_KEY, resolveTheme(theme));
+		}
+
+		function toggleTheme() {
+			const currentTheme = getStoredTheme();
+			let newTheme = AUTO_THEME;
+
+			if (prefersDarkMode()) {
+				if (currentTheme == AUTO_THEME || currentTheme == DARK_THEME) {
+					newTheme = LIGHT_THEME;
+				}
+			} else {
+				if (currentTheme == AUTO_THEME || currentTheme == LIGHT_THEME) {
+					newTheme = DARK_THEME;
+				}
+			}
+
+			setTheme(newTheme);
+		}
+
+		setTheme(getStoredTheme());
+
+		function splitMilliseconds(milliseconds) {
+			const floor = milliseconds < 0 ? Math.ceil : Math.floor
+
+			const negative = milliseconds < 0;
+			const days = floor(milliseconds / (24 * 60 * 60 * 1000));
+			const hours = floor(milliseconds / (60 * 60 * 1000)) % 24;
+			const minutes = floor(milliseconds / (60 * 1000)) % 60;
+			const seconds = floor(milliseconds / (1000)) % 60;
+			const _milliseconds = milliseconds % 1000;
+
+			return { days, hours, minutes, seconds, _milliseconds, negative };
+		}
+
+		function timePad(number) {
+			return number < 10 ? '0' + number : number;
+		}
+
+		let html = window.html;
+		if (html === undefined) {
+			html = (strings, ...values) => String.raw({ raw: strings }, ...values);
+		}
+
+		class Character {
+			constructor(name, imageSrcKey = null, imageSrcOverride = null) {
+				this.name = name;
+				this.imageSrcKey = imageSrcKey ?? this.name;
+				this.imageSrcOverride = imageSrcOverride;
+			}
+
+			getCharacterImageURL() {
+				// return `https://wiki.play2xko.com/en-us/images/thumb/${this.imageSrcKey}_cs.png/600px-${this.imageSrcKey}_cs.png`
+				return this.imageSrcOverride != null ? this.imageSrcOverride : `https://wiki.play2xko.com/en-us/images/thumb/${this.imageSrcKey}_cs.png/600px-${this.imageSrcKey}_cs.png`;
+			}
+		}
+
+		class Fuse {
+			constructor(name, soloFuse, imageSrcKey = null) {
+				this.name = name;
+				this.soloFuse = soloFuse;
+				this.imageSrcKey = imageSrcKey ?? this.name.replace(' ', '_');
+			}
+
+			getFuseImageURL() {
+				return `https://wiki.play2xko.com/en-us/images/thumb/${this.imageSrcKey}_fuse.png/128px-${this.name}_fuse.png`
+			}
+		}
+
+		const characterDataList = [
+			new Character("Ahri", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/593043e42b15c4826f7e0fc2a0bea85a05cdd994-780x1040.png"),
+			new Character("Blitzcrank", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/f9c03d5822725c97b83afd3f7ed2da68acfa9199-780x1040.png"),
+			new Character("Braum", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/96bcb8cdcee7f3fd12b379c8517aa1f33504c371-780x1040.png"),
+			new Character("Darius", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/67e08591a957c9068e3b146976785fb8308d6cd4-780x1040.png"),
+			new Character("Ekko", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/f98dcc375555b36de58cc991c381c4fce641b636-780x1040.png"),
+			new Character("Illaoi", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/12a5e9cea0ea7626b0d89e3740180f13341b5dc8-780x1040.png"),
+			new Character("Jinx", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/f0e8ed7da57962c1245dfca8c26a8a81ddab017d-780x1040.png"),
+			new Character("Teemo", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/0933542e8d4fc57628e7fe7dff9cd17d2ff457a4-780x1040.png"),
+			new Character("Vi", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/d69d95df23f8a7e5c951a1021f4f5b118fadaec3-780x1040.png"),
+			new Character("Warwick", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/6aa9fb38660c1b63c37716c6f44739ba406b501f-780x1040.png"),
+			new Character("Yasuo", null, "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7e9459768d4641533fdbfa1c0e84b6574d8e05ab-780x1040.png"),
+		];
+
+		const fuseDataList = [
+			new Fuse("2X Assist", false),
+			new Fuse("Double Down", false),
+			new Fuse("Freestyle", false),
+			new Fuse("Juggernaut", true),
+			new Fuse("Sidekick", true),
+		];
+
+		let _characterBag = null;
+		function getCharacter() {
+			if (_characterBag == null || _characterBag.length == 0) {
+				_characterBag = characterDataList.slice();
+				arrayShuffle(_characterBag);
+			}
+
+			return _characterBag.pop();
+		}
+
+		let _fuseBag = null;
+		function getFuse() {
+			if (_fuseBag == null || _fuseBag.length == 0) {
+				_fuseBag = fuseDataList.slice();
+				arrayShuffle(_fuseBag);
+			}
+
+			return _fuseBag.pop();
+		}
+
+		let _imageId = 0;
+		function getNextId() {
+			_imageId += 1;
+			return _imageId;
+		}
+
+		let lastGeneratedDate = new Date();
+		let lastTimerIntervalEpoch = null;
+		let timerRemainingMilliseconds = 0;
+		let canAnnounceTimerOver = false;
+		document.addEventListener("DOMContentLoaded", function (event) {
+			const characterListElement = document.getElementById("character-list");
+			const characterHistoryListElement = document.getElementById("character-history-list");
+
+			const imageCacheElement = document.getElementById("image-cache");
+			for (const characterData of characterDataList) {
+				const imageElement = document.createElement("img");
+				imageElement.src = characterData.getCharacterImageURL();
+				imageElement.hidden = true;
+				imageElement.ariaHidden = true;
+				imageElement.alt = characterData.name;
+				imageCacheElement.appendChild(imageElement);
+			}
+
+			for (const fuseData of fuseDataList) {
+				const imageElement = document.createElement("img");
+				imageElement.src = fuseData.getFuseImageURL();
+				imageElement.hidden = true;
+				imageElement.ariaHidden = true;
+				imageElement.alt = fuseData.name;
+				imageCacheElement.appendChild(imageElement);
+			}
+
+			const clearHistoryButtonElement = document.getElementById("clear-history-button");
+			clearHistoryButtonElement.addEventListener("click", () => {
+				characterHistoryListElement.replaceChildren();
+				clearHistoryButtonElement.hidden = true;
+			});
+
+			const timerEnabledCheckboxElement = document.getElementById("timer-enabled-checkbox");
+
+			function refreshTimer(offsetMS) {
+				timerRemainingMilliseconds -= offsetMS;
+
+				const millisecondsRemaining = timerRemainingMilliseconds;
+
+				const millisecondSplit = splitMilliseconds(millisecondsRemaining);
+
+				let outputTimerElementText = "";
+				outputTimerElementText += millisecondSplit.negative ? "-" : "";
+				outputTimerElementText += (millisecondSplit.days > 0) ? timePad(Math.abs(millisecondSplit.days)) + ":" : "";
+				outputTimerElementText += (millisecondSplit.days > 0 || millisecondSplit.hours > 0) ? timePad(Math.abs(millisecondSplit.hours)) + ":" : "";
+				outputTimerElementText += timePad(Math.abs(millisecondSplit.minutes)) + ":";
+				outputTimerElementText += timePad(Math.abs(millisecondSplit.seconds));
+
+				timerElement.innerText = outputTimerElementText;
+
+				if (millisecondSplit.negative) {
+					timerElement.style.color = "red";
+
+					if (canAnnounceTimerOver) {
+						timerElement.role = "alert";
+						canAnnounceTimerOver = false;
+					} else {
+						timerElement.role = "timer";
+					}
+				} else {
+					timerElement.style.color = "";
+				}
+			}
+
+			const timerElement = document.getElementById("timer");
+			setInterval(() => {
+				const now = Date.now();
+				if (lastTimerIntervalEpoch != null && timerEnabledCheckboxElement.checked && characterListElement.children.length > 0) {
+					refreshTimer(now - lastTimerIntervalEpoch);
+				}
+
+				lastTimerIntervalEpoch = now;
+			}, 1000);
+
+			const darkmodeToggleSVGElement = document.getElementById("darkmode-toggle-svg");
+			darkmodeToggleSVGElement.addEventListener("click", () => {
+				toggleTheme();
+				handleFuseImages();
+			});
+
+			function handleFuseImages() {
+				const activeTheme = getActiveTheme();
+
+				const addFuseImageClass = activeTheme == LIGHT_THEME;
+				for (const fuseImageElement of document.querySelectorAll('[data-id="fuse-image"]')) {
+					if (addFuseImageClass) {
+						fuseImageElement.classList.add("fuse-image");
+					} else {
+						fuseImageElement.classList.remove("fuse-image");
+					}
+				}
+			}
+
+			function handleMirror() {
+				for (const imageElement of characterListElement.querySelectorAll(".character-image")) {
+					imageElement.style.transform = `scale(${mirrorImagesCheckboxElement.checked ? -1 : 1}, 1)`;
+				}
+			}
+
+			const mirrorImagesCheckboxElement = document.getElementById("mirror-images-checkbox");
+			mirrorImagesCheckboxElement.addEventListener("change", () => {
+				handleMirror();
+			});
+
+			const useFusesCheckboxElement = document.getElementById("use-fuses-checkbox");
+			const includeSoloCharacterFusesCheckbox = document.getElementById("include-solo-character-fuses-checkbox");
+
+			const duosCheckboxElement = document.getElementById("duos-checkbox");
+
+			const timerMinutesInputElement = document.getElementById("timer-minutes-input");
+
+			const generateButtonElement = document.getElementById("generate-button");
+			generateButtonElement.addEventListener("click", () => {
+				canAnnounceTimerOver = true;
+
+				timerRemainingMilliseconds = timerMinutesInputElement.value * 60 * 1000 + 200;
+				refreshTimer(0);
+
+				clearHistoryButtonElement.hidden = characterListElement.children.length == 0;
+
+				let characterOne = getCharacter();
+
+				let characterTwo = null;
+				if (duosCheckboxElement.checked) {
+					characterTwo = getCharacter();
+				}
+
+				while (characterOne == characterTwo && characterTwo != null) {
+					characterTwo = getCharacter();
+				}
+
+				if (characterListElement.children.length > 0) {
+					const newCharacterHistoryRowElement = document.createElement("div");
+
+					const newCharacterHistoryRowLabelElement = document.createElement("h2");
+					newCharacterHistoryRowLabelElement.innerText = lastGeneratedDate.toLocaleString();
+					newCharacterHistoryRowElement.appendChild(newCharacterHistoryRowLabelElement);
+
+					const characterHistoryRowContainerElement = document.createElement("div");
+					characterHistoryRowContainerElement.classList.add("row");
+					characterHistoryRowContainerElement.classList.add("row-cols-2");
+					characterHistoryRowContainerElement.classList.add("gy-2");
+					characterHistoryRowContainerElement.classList.add("justify-content-center");
+					newCharacterHistoryRowElement.appendChild(characterHistoryRowContainerElement);
+
+					for (const element of Array.from(characterListElement.children)) {
+						element.classList.add("h-100");
+
+						const newCharacterColumnElement = document.createElement("div");
+						newCharacterColumnElement.classList.add("col");
+						newCharacterColumnElement.classList.add("w-100");
+						newCharacterColumnElement.appendChild(element);
+
+						characterHistoryRowContainerElement.appendChild(newCharacterColumnElement);
+					}
+
+					if (characterHistoryListElement.children.length > 0) {
+						characterHistoryListElement.insertBefore(newCharacterHistoryRowElement, characterHistoryListElement.firstElementChild);
+					} else {
+						characterHistoryListElement.appendChild(newCharacterHistoryRowElement);
+					}
+				}
+
+				characterListElement.replaceChildren();
+
+				const characterContainerElement = document.createElement("div");
+				characterContainerElement.classList.add("d-flex");
+				characterContainerElement.classList.add("flex-column");
+				characterContainerElement.classList.add("justify-content-center");
+				characterContainerElement.classList.add("gap-2");
+
+				const charactersRowElement = document.createElement("div");
+				charactersRowElement.classList.add("d-flex");
+				charactersRowElement.classList.add("flex-row");
+				charactersRowElement.classList.add("justify-content-center");
+				charactersRowElement.classList.add("gap-2");
+				characterContainerElement.appendChild(charactersRowElement);
+
+				for (const character of [characterOne, characterTwo]) {
+					if (character != null) {
+						const currentCharacterImageId = "character-img-" + character.name + "-" + getNextId();
+						const currentCharacterLabelId = "character-label-" + character.name + "-" + getNextId();
+
+						// TODO: Autofit character name text.
+						// TODO: Once 'data-ssml-sub-alias' is implemented, can have correct pronunciation for character names: https://w3c.github.io/pronunciation/technical-approach/
+						charactersRowElement.insertAdjacentHTML("beforeend", html`
+							<div class="card">
+								<img id="${currentCharacterImageId}" src="${character.getCharacterImageURL()}" class="card-img-top ratio ratop-1x1 mx-auto character-image" alt="Character Image">
+								<div class="card-body">
+									<label id="${currentCharacterLabelId}" for="${currentCharacterImageId}" class="fs-2 card-title text-center">${character.name}</label>
+								</div>
+							</div>
+							`
+						);
+					}
+				}
+
+				characterListElement.appendChild(characterContainerElement);
+
+				if (useFusesCheckboxElement.checked) {
+					let fuse = getFuse();
+
+					if (!includeSoloCharacterFusesCheckbox.checked) {
+						while (fuse.soloFuse) {
+							fuse = getFuse();
+						}
+					}
+
+					const currentFuseImageId = "fuse-image-" + fuse.name + "-" + getNextId();
+					const currentFuseLabelId = "fuse-label-" + fuse.name + "-" + getNextId();
+
+					characterContainerElement.insertAdjacentHTML("beforeend", html`
+						<div class="d-flex flex-row justify-content-center gap-2">
+							<div class="card col-md-3 col-6">
+								<img id="${currentFuseImageId}" src="${fuse.getFuseImageURL()}" class="card-img-top flex-grow ratio ratop-1x1 mx-auto w-50 h-100" data-id="fuse-image" alt="Fuse Image">
+								<div class="card-body">
+									<label id="${currentFuseLabelId}" for="${currentFuseImageId}" class="fs-2 card-title text-center">${fuse.name}</label>
+								</div>
+							</div>
+						</div>
+						`
+					);
+
+					handleFuseImages();
+				}
+
+				handleMirror();
+
+				lastGeneratedDate = new Date();
+			});
+		});
+	</script>
+</head>
+
+<body>
+	<div id="image-cache" style="display: none" hidden aria-hidden="true"></div>
+
+	<div class="container d-grid gap-2 text-center">
+		<div class="d-flex p-1 gap-0">
+			<button id="generate-button" class="btn btn-primary flex-grow-1">Generate</button>
+
+			<button id="darkmode-toggle-svg" type="button" style="width: 40px; min-width: 40px;"
+				class="btn align-items-center">
+				<svg id="darkmode-toggle-svg" xmlns="http://www.w3.org/2000/svg" width="30" height="30"
+					viewBox="4 0 120 120" style="height: 100%;" aria-hidden="true" focusable="false">
+					<path
+						d="M60 16.005v87.988c-24.258 0-43.994-19.736-43.994-43.995 0-24.254 19.736-43.99 43.994-43.99m0-11c-30.373 0-54.994 24.62-54.994 54.994s24.622 55 54.994 55 55-24.63 55-55-24.628-54.99-55-54.99z"
+						style="fill: RGBA(var(--bs-emphasis-color-rgb));" />
+				</svg>
+				<span class="visually-hidden">
+					Darkmode Toggle
+				</span>
+			</button>
+		</div>
+
+		<div class="d-flex text-center flex-row justify-content-center gap-md-3 gap-1">
+			<div class="d-flex flex-column gap-1">
+				<h3 role="timer" id="timer">00:00</h3>
+
+				<span class="input-group-text gap-2 flex-md-row">
+					<input id="timer-minutes-input" class="form-control" style="width: 30vw !important;"
+						placeholder="..." type="number" value="10" min="0" aria-label="Timer Counterdown Minutes" />
+
+					<label for="timer-minutes-input">minutes</label>
+				</span>
+
+				<div class="input-group-text gap-2">
+					<label for="timer-enabled-checkbox">Enable Timer</label>
+					<input id="timer-enabled-checkbox" class="form-check-input mt-0" type="checkbox" value=""
+						aria-label="Enable Timer">
+				</div>
+			</div>
+
+			<div class="input-group-text d-flex flex-column gap-2">
+				<div class="d-flex align-items-center gap-1">
+					<label for="mirror-images-checkbox">Mirror Images</label>
+					<input id="mirror-images-checkbox" class="form-check-input mt-0" type="checkbox" value=""
+						aria-label="Mirror Images">
+				</div>
+				<div class="d-flex align-items-center gap-1">
+					<label for="use-fuses-checkbox">Use Fuses</label>
+					<input id="use-fuses-checkbox" class="form-check-input mt-0" type="checkbox" value="" checked
+						aria-label="Use Fuses">
+				</div>
+				<div class="d-flex align-items-center gap-1">
+					<label for="include-solo-character-fuses-checkbox" class="text-wrap">Include Solo-Character
+						Fuses</label>
+					<input id="include-solo-character-fuses-checkbox" class="form-check-input mt-0" type="checkbox"
+						value="" checked aria-label="Include Solo-Character Fuses Checkbox">
+				</div>
+				<div class="d-flex align-items-center gap-1">
+					<label for="duos-checkbox">Duos</label>
+					<input id="duos-checkbox" class="form-check-input mt-0" type="checkbox" value="" checked
+						aria-label="Enable Duos">
+				</div>
+			</div>
+		</div>
+
+		<div id="character-list" class="d-flex flex-column gap-1 justify-content-center" aria-live="assertive"></div>
+
+		<div class="container w-75">
+			<button id="clear-history-button" class="btn btn-primary" hidden>Clear History</button>
+			<div id="character-history-list" class="container d-grid gap-2 text-center"></div>
+		</div>
+	</div>
+</body>
+
+</html>
